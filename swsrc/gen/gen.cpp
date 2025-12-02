@@ -1,13 +1,13 @@
+#include <gen/gen_prime.h>
 #include <share/rawio.h>
 #include <iostream>
-#include <time.h>
 
 int main()
 {
-    size_t size = 16;
-    gmp_randclass gmp_rand(gmp_randinit_default);
-    gmp_rand.seed(time(nullptr));
-    mpz_class bigNum = gmp_rand.get_z_bits(8*size);
+    size_t size = 10;
+    gmp_randstate_t state;
+    init_state(state);
+    intxx bigNum = gen_prime_intxx(size, state);
 
     std::cerr << "in: " << bigNum << std::endl;
     raw_write(bigNum, size);

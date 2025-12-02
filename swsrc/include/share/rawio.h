@@ -9,7 +9,7 @@
 // writes (size, number) in big-endian
 void raw_write(const intxx &num, uint32_t size);
 
-// read (size, number) in big-endian
+// reads (size, number) in big-endian
 void raw_read(intxx &num, uint32_t &size);
 
 #endif // RAWIO_HEADER
