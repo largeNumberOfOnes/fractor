@@ -1,4 +1,5 @@
 #include <share/rawio.h>
+#include <iostream>
 #include <time.h>
 
 int main()
@@ -8,5 +9,6 @@ int main()
     gmp_rand.seed(time(nullptr));
     mpz_class bigNum = gmp_rand.get_z_bits(8*size);
 
+    std::cerr << "in: " << bigNum << std::endl;
     raw_write(bigNum, size);
 }

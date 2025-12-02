@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <inttypes.h>
 #include <type_traits>
+#include <gmpxx.h>
 
 using int8  = int8_t;
 using int16 = int16_t;
@@ -17,6 +18,8 @@ using float64 = double; // DEV [not garantued]
 
 using byte  = std::byte;
 using usize = uint64;
+
+using intxx = mpz_class;
 
 constexpr usize EXPANDABLE_ARRAY = 0;
 

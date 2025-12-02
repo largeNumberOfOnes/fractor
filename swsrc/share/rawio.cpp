@@ -29,10 +29,10 @@ void raw_read(mpz_class &num, uint32 &size)
 {
     char size_buffer[4];
     std::cin.read(size_buffer, 4);
-    size =  (static_cast<uint32>(size_buffer[0]) << 0) +
-            (static_cast<uint32>(size_buffer[1]) << 8) +
-            (static_cast<uint32>(size_buffer[2]) << 16) +
-            (static_cast<uint32>(size_buffer[3]) << 24);
+    size =  (static_cast<uint32>(size_buffer[3]) << 0) +
+            (static_cast<uint32>(size_buffer[2]) << 8) +
+            (static_cast<uint32>(size_buffer[1]) << 16) +
+            (static_cast<uint32>(size_buffer[0]) << 24);
     char *buffer = new char[size];
     require(buffer, "Can't allocate memory to read num.");
     std::cin.read(buffer, size);
