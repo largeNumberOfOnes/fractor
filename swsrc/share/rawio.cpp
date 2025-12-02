@@ -1,8 +1,7 @@
 #include <share/require.h>
 #include <share/rawio.h>
-#include <share/types.h>
 
-void raw_write(const mpz_class &num, uint32 size)
+void raw_write(const intxx &num, uint32 size)
 {
     uint32 full_size = size + sizeof(size);
     char *buffer = new char[full_size];
@@ -25,7 +24,7 @@ void raw_write(const mpz_class &num, uint32 size)
     delete[] buffer;
 }
 
-void raw_read(mpz_class &num, uint32 &size)
+void raw_read(intxx &num, uint32 &size)
 {
     char size_buffer[4];
     std::cin.read(size_buffer, 4);

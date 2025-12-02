@@ -1,3 +1,6 @@
+#ifndef TYPES_HEADER
+#define TYPES_HEADER
+
 #include <cstddef>
 #include <inttypes.h>
 #include <type_traits>
@@ -23,3 +26,4 @@ using intxx = mpz_class;
 
 constexpr usize EXPANDABLE_ARRAY = 0;
 
+#endif // TYPES_HEADER
