@@ -270,8 +270,6 @@ std::vector<intxx> factor_ECM_parm(
                 // Further verification is required
                 // And he knows what needs to be done...
                 // pass // DEV
-                error_code = FactorEcmError::special_case;
-                return {};
             }
         }
     }
