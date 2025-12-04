@@ -19,17 +19,22 @@ bool comp_vec(
     const std::vector<intxx>& b
 )
 {
-    if (a.size() != b.size()) {
+    if (a.size() != b.size())
+    {
         return false;
     }
-    for (const auto& it : a) {
+    for (const auto& it : a)
+    {
         int count_a = 0;
         int count_b = 0;
-        for (usize q = 0; q < a.size(); ++q) {
-            if (a[q] == it) {
+        for (usize q = 0; q < a.size(); ++q)
+        {
+            if (a[q] == it)
+            {
                 ++count_a;
             }
-            if (b[q] == it) {
+            if (b[q] == it)
+            {
                 ++count_b;
             }
         }
@@ -51,9 +56,11 @@ void test()
         // {1279111203059, {1273471, 1004429}},
     };
 
-    for (const auto& [n, ans] : test_data) {
+    for (const auto& [n, ans] : test_data)
+    {
         std::vector<intxx> ret = factor_QS(n);
-        if (!comp_vec(ret, ans)) {
+        if (!comp_vec(ret, ans))
+        {
             std::cout << "n = " << n << std::endl;
             std::cout << "ans = ";
                 print_array(ans);
