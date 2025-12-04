@@ -14,10 +14,12 @@ factor_QS_deb:
 		-o $(OBJECTS_DIR)/factor_qs.o
 
 factor_ECM:
-	# pass
+	$(CXX) $(RFLAGS) $(INCLUDE) $(LIBS) factor_ecm.cpp \
+		-o $(OBJECTS_DIR)/factor_ecm.o
 
 factor_ECM_deb:
-	# pass
+	$(CXX) $(DFLAGS) $(INCLUDE) $(LIBS) factor_ecm.cpp \
+		-o $(OBJECTS_DIR)/factor_ecm.o
 
 all: factor_QS factor_ECM
 	# pass
