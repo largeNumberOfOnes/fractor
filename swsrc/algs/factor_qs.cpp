@@ -432,7 +432,7 @@ intxx find_devider(
         }
     }
 
-    return 0;
+    return 1;
 }
 
 std::vector<intxx> factor_QS_parm(
