@@ -6,6 +6,7 @@
 #include "share/types.h"
 
 enum class FactorQsError {
+    success, // Success
     no_smoots, // Not enough smooth numbers
     no_deps, // No linear relationships found
 };
@@ -13,6 +14,7 @@ enum class FactorQsError {
 // Factorize a number using the quadratic sieve method
 // B -- Smoothness boundary
 // M -- Sieve interval size
+// May returns empty list if no factors found
 std::vector<intxx> factor_QS_parm(
     const intxx& n,
     int32 B,
@@ -22,7 +24,8 @@ std::vector<intxx> factor_QS_parm(
 
 // Factorize a number using the quadratic sieve method
 // Parameters will be selected based on the length of the number
+// May returns empty list if no factors found
 // Error code omitted
-std::vector<intxx> factor_QS(intxx n);
+std::vector<intxx> factor_QS(const intxx& n);
 
 #endif // FACTOR_QS_HEADER

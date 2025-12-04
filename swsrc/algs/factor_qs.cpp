@@ -442,6 +442,7 @@ std::vector<intxx> factor_QS_parm(
     FactorQsError& error_code
 )
 {
+    error_code = FactorQsError::success;
     FactorBase factor_base = find_factor_base(n, B);
 
     std::vector<SmoothNumber> smooth_numbers =
