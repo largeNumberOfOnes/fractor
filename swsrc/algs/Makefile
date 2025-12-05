@@ -1,6 +1,6 @@
 CXX = g++
-RFLAGS = -c -O2 #-Wall -Werror -Wextra
-DFLAGS = -c -g  #-Wall -Werror -Wextra
+RFLAGS = -c -O2 -Wall -Werror -Wextra
+DFLAGS = -c -g  -Wall -Werror -Wextra
 INCLUDE = -I../include/
 LIBS = -lgmp -lgmpxx
 OBJECTS_DIR = ../../objects/algs

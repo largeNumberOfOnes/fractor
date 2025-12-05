@@ -176,16 +176,18 @@ std::vector<intxx> find_Qx_roots(
 
 Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
 {
-    usize m = matrix.size();
-    usize n = matrix[0].size();
+    int32 m = matrix.size();
+    int32 n = matrix[0].size();
 
     Matrix<int32> A{matrix};
     Matrix<int32> row_ops(m, std::vector<int32>{});
 
-    for (int col = 0; col < n; ++col)
+    for (int32 col = 0; col < n; ++col)
     {
-        int pivot = -1;
-        for (int row = col; row < m; ++row)
+        const int32 UNDEF = std::max(n, m) + 7; // undefined value
+                                                //            for pivot
+        int32 pivot = UNDEF;
+        for (int32 row = col; row < m; ++row)
         {
             if (A[row][col] == 1)
             {
@@ -193,7 +195,7 @@ Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
                 break;
             }
         }
-        if (pivot == -1)
+        if (pivot == UNDEF)
         {
             continue;
         }
@@ -204,11 +206,11 @@ Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
             std::swap(row_ops[col], row_ops[pivot]);
         }
 
-        for (int row = 0; row < m; ++row)
+        for (int32 row = 0; row < m; ++row)
         {
             if (row != col and A[row][col] == 1)
             {
-                for (int c = 0; c < n; ++c)
+                for (int32 c = 0; c < n; ++c)
                 {
                     A[row][c] ^= A[col][c];
                 }
@@ -218,7 +220,7 @@ Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
     }
 
     Matrix<int32> dependencies;
-    for (int q = 0; q < m; ++q)
+    for (int32 q = 0; q < m; ++q)
     {
         bool cond = true;
         for (auto x : A[q])
@@ -470,7 +472,7 @@ std::vector<intxx> factor_QS_parm(
     return {d, n / d};
 }
 
-std::vector<intxx> factor_QS(intxx n)
+std::vector<intxx> factor_QS(const intxx& n)
 {
     int32 B = 1000;
     int32 M = 5000;
