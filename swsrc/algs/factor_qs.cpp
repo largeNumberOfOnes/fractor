@@ -1,6 +1,7 @@
 #include "algs/factor_qs.h"
 
 #include <unordered_map>
+#include <iostream>
 #include <utility>
 #include <cassert>
 #include <vector>
@@ -284,14 +285,25 @@ static Factors factor_over_base(intxx num, const FactorBase& factor_base)
 }
 
 static std::vector<SmoothNumber> find_smooth_numbers(
-    intxx n, int32 B, int32 M, const FactorBase& factor_base
+    intxx n, int32 B, int32 M, const FactorBase& factor_base,
+    bool verbose
 )
 {
     intxx sqrt_n = sqrt_intxx(n);
     std::vector<float64> sieve_array(2 * M + 1, 0.0);
 
-    for (auto p : factor_base)
+    if (verbose)
     {
+        std::cout << "Searching roots..." << std::endl;
+    }
+    for (usize q = 0; q < factor_base.size(); ++q)
+    {
+        if (verbose)
+        {
+            std::cout << "  " << 100 * q / factor_base.size()
+                      << "%" << std::endl;
+        }
+        int32 p = factor_base[q];
         float64 log_p = std::log(p);
         auto roots = find_Qx_roots(n, sqrt_n, p);
         for (const auto& root : roots)
@@ -307,8 +319,18 @@ static std::vector<SmoothNumber> find_smooth_numbers(
 
     float64 threshold = std::log(B) * 1.5;
     std::vector<SmoothNumber> smooth_numbers;
+    if (verbose)
+    {
+        std::cout << "Seive..." << std::endl;
+    }
     for (int32 x = -M; x < M + 1; ++x)
     {
+        constexpr int M_factor = 10;
+        if (verbose && ((x + M) % (M / M_factor) == 0))
+        {
+            std::cout << "  " << 100 * (x + M) / (2 * M) << "%"
+                      << std::endl;
+        }
         int32 idx = x + M;
         intxx Q_x = (x + sqrt_n) * (x + sqrt_n) - n;
 
@@ -443,25 +465,56 @@ std::vector<intxx> factor_QS_parm(
     const intxx& n,
     int32 B,
     int32 M,
+    bool verbose,
     FactorQsError& error_code
 )
 {
     error_code = FactorQsError::success;
+    if (verbose)
+    {
+        std::cout << "Bulding factor base [B = "
+                  << B << "]..." << std::endl;
+    }
     FactorBase factor_base = find_factor_base(n, B);
+    if (verbose)
+    {
+        std::cout << "Factor base size: "
+                  << factor_base.size() << std::endl;
+    }
 
+    if (verbose)
+    {
+        std::cout << "Finding smooth numbers [B = "
+                  << B << ", M = " << M
+                  << "]..." << std::endl;
+    }
     std::vector<SmoothNumber> smooth_numbers =
-                            find_smooth_numbers(n, B, M, factor_base);
+                    find_smooth_numbers(n, B, M, factor_base, verbose);
+
     if (smooth_numbers.size() < factor_base.size() + 10)
     {
         error_code = FactorQsError::no_smoots;
         return {};
     }
+    if (verbose)
+    {
+        std::cout << "Found " << smooth_numbers.size()
+                  << " smooth numbers: " << std::endl;
+    }
 
+    if (verbose)
+    {
+        std::cout << "Creating matrix..." << std::endl;
+    }
     Matrix<int32> matrix = build_exponent_matrix(
         factor_base,
         smooth_numbers
     );
 
+    if (verbose)
+    {
+        std::cout << "Finding dependencies..." << std::endl;
+    }
     Matrix<int32> dependencies = gaussian_elimination_mod2(matrix);
     if (!dependencies.size())
     {
@@ -469,18 +522,41 @@ std::vector<intxx> factor_QS_parm(
         return {};
     }
 
+    if (verbose)
+    {
+        std::cout << "Finding devider..." << std::endl;
+    }
     intxx d = find_devider(n, smooth_numbers, dependencies);
+    if (verbose)
+    {
+        std::cout << "Found devider " << d << std::endl;
+    }
 
+    std::vector<intxx> ret;
     if (d != 0 && d != 1) {
         return {d, n / d};
+        ret.push_back(d / n);
+        ret.push_back(std::move(d));
     }
-    return {};
+    if (verbose)
+    {
+        std::cout << "Output: {";
+        if (0 < ret.size()) {
+            std::cout << ret[0] << std::endl;
+            for (usize q = 1; q < ret.size(); ++q) {
+                std::cout << ", " << ret[q];
+            }
+        }
+        std::cout << "}" << std::endl;
+    }
+    return ret;
 }
 
 std::vector<intxx> factor_QS(const intxx& n)
 {
     int32 B = 1000;
     int32 M = 5000;
+    bool verbose = false;
     FactorQsError error_code;
-    return factor_QS_parm(n, B, M, error_code);
+    return factor_QS_parm(n, B, M, verbose, error_code);
 }
