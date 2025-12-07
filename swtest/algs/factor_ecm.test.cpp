@@ -66,7 +66,7 @@ void test()
         std::vector<intxx> ret = factor_ECM(n);
         if (!comp_vec(ret, ans))
         {
-            std::cout << "Error in test:" << n << std::endl;
+            std::cout << "Error in test" << std::endl;
             std::cout << "  n = " << n << std::endl;
             std::cout << "  ans = ";
                 print_array(ans);

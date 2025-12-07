@@ -1,5 +1,5 @@
-#ifndef FACTOR_QS_HEADER
-#define FACTOR_QS_HEADER
+#ifndef FACTOR_ECM_HEADER
+#define FACTOR_ECM_HEADER
 
 #include <vector>
 
@@ -28,4 +28,4 @@ std::vector<intxx> factor_ECM_parm(
 // Error code omitted
 std::vector<intxx> factor_ECM(const intxx& n);
 
-#endif // FACTOR_QS_HEADER
+#endif // FACTOR_ECM_HEADER

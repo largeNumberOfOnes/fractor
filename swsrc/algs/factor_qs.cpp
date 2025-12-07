@@ -1,6 +1,7 @@
 #include "algs/factor_qs.h"
 
 #include <unordered_map>
+#include <iostream>
 #include <utility>
 #include <cassert>
 #include <vector>
@@ -18,47 +19,34 @@ using FactorBase = std::vector<int32>;
 using Factors = std::unordered_map<int32, int32>;
 using SmoothNumber = std::tuple<intxx, intxx, Factors>;
 
-intxx sqrt_intxx(const intxx& n)
+static intxx sqrt_intxx(const intxx& n)
 {
     intxx sqrt_n;
     mpz_sqrt(sqrt_n.get_mpz_t(), n.get_mpz_t());
     return sqrt_n;
 }
 
-int legendre_symbol(const intxx& a, const intxx& p)
+static int legendre_symbol(const intxx& a, const intxx& p)
 {
     return mpz_legendre(a.get_mpz_t(), p.get_mpz_t());
 }
 
-std::vector<int32> sieve_of_eratosthenes(int32 limit)
+static std::vector<int32> sieve_of_eratosthenes(int32 limit)
 {
-    std::vector<bool> is_prime(limit + 1, true);
-    is_prime[0] = is_prime[1] = false;
-
-    for (int q = 2; q <= limit; ++q)
-    {
-        if (is_prime[q])
-        {
-            for (int w = 2 * q; w <= limit; w += q)
-            {
-                is_prime[w] = false;
-            }
-        }
-    }
-
-    std::vector<int> primes;
-    for (int i = 3; i <= limit; ++i)
-    {
-        if (is_prime[i])
-        {
-            primes.push_back(i);
+    constexpr int reps_count = 10;
+    std::vector<int32> primes;
+    for (int32 q = 0; q < limit; ++q) {
+        intxx num = q;
+        bool is_prime = mpz_probab_prime_p(num.get_mpz_t(), reps_count);
+        if (is_prime) {
+            primes.push_back(q);
         }
     }
 
     return primes;
 }
 
-std::vector<int32> find_factor_base(const intxx& n, int32 B)
+static std::vector<int32> find_factor_base(const intxx& n, int32 B)
 {
     std::vector<int32> primes = sieve_of_eratosthenes(B);
     std::vector<int32> factor_base;
@@ -72,7 +60,7 @@ std::vector<int32> find_factor_base(const intxx& n, int32 B)
     return factor_base;
 }
 
-intxx integer_power(intxx a, int32 power)
+static intxx integer_power(intxx a, int32 power)
 {
     intxx b = a;
     for (int32 q = 1; q < power; ++q)
@@ -82,7 +70,7 @@ intxx integer_power(intxx a, int32 power)
     return b;
 }
 
-intxx field_sqrt(intxx n, int32 p)
+static intxx field_sqrt(intxx n, int32 p)
 {
     assert(2 < p && p % 2 == 1); // DEV
     assert(integer_power(n, (p - 1) / 2) % p == 1); // DEV
@@ -139,7 +127,7 @@ intxx field_sqrt(intxx n, int32 p)
 }
 
 // Q(x) = (x + m)^2 - n = 0 (mod p) => (x + m)^2 = n (mod p), m = sqrt_n
-std::vector<intxx> find_Qx_roots(
+static std::vector<intxx> find_Qx_roots(
     const intxx& n,
     const intxx& sqrt_n,
     int32 p
@@ -174,18 +162,23 @@ std::vector<intxx> find_Qx_roots(
     return {root1, root2};
 }
 
-Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
+static std::pair<
+    Matrix<int32>,
+    Matrix<int32>
+> gaussian_elimination_mod2_prepare(const Matrix<int32>& matrix)
 {
-    usize m = matrix.size();
-    usize n = matrix[0].size();
+    int32 m = matrix.size();
+    int32 n = matrix[0].size();
 
     Matrix<int32> A{matrix};
     Matrix<int32> row_ops(m, std::vector<int32>{});
 
-    for (int col = 0; col < n; ++col)
+    for (int32 col = 0; col < n; ++col)
     {
-        int pivot = -1;
-        for (int row = col; row < m; ++row)
+        const int32 UNDEF = std::max(n, m) + 7; // unreachable value
+                                                //            for pivot
+        int32 pivot = UNDEF;
+        for (int32 row = col; row < m; ++row)
         {
             if (A[row][col] == 1)
             {
@@ -193,22 +186,21 @@ Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
                 break;
             }
         }
-        if (pivot == -1)
+        if (pivot == UNDEF)
         {
             continue;
         }
-
         if (pivot != col)
         {
             std::swap(A[col], A[pivot]);
             std::swap(row_ops[col], row_ops[pivot]);
         }
 
-        for (int row = 0; row < m; ++row)
+        for (int32 row = 0; row < m; ++row)
         {
             if (row != col and A[row][col] == 1)
             {
-                for (int c = 0; c < n; ++c)
+                for (int32 c = 0; c < n; ++c)
                 {
                     A[row][c] ^= A[col][c];
                 }
@@ -217,8 +209,16 @@ Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
         }
     }
 
+    return {A, row_ops};
+}
+
+static Matrix<int32> gaussian_elimination_mod2_find_dependencies(
+    const Matrix<int32>& A,
+    const Matrix<int32>& row_ops
+)
+{
     Matrix<int32> dependencies;
-    for (int q = 0; q < m; ++q)
+    for (int32 q = 0; q < static_cast<int32>(A.size()); ++q)
     {
         bool cond = true;
         for (auto x : A[q])
@@ -244,11 +244,16 @@ Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
             dependencies.push_back(std::move(lis));
         }
     }
-
     return dependencies;
 }
 
-Factors factor_over_base(intxx num, const FactorBase& factor_base)
+static Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
+{
+    auto [A, row_ops] = gaussian_elimination_mod2_prepare(matrix);
+    return gaussian_elimination_mod2_find_dependencies(A, row_ops);
+}
+
+static Factors factor_over_base(intxx num, const FactorBase& factor_base)
 {
     Factors factors;
     intxx temp = abs(num);
@@ -279,15 +284,26 @@ Factors factor_over_base(intxx num, const FactorBase& factor_base)
     return factors;
 }
 
-std::vector<SmoothNumber> find_smooth_numbers(
-    intxx n, int32 B, int32 M, const FactorBase& factor_base
+static std::vector<SmoothNumber> find_smooth_numbers(
+    intxx n, int32 B, int32 M, const FactorBase& factor_base,
+    bool verbose
 )
 {
     intxx sqrt_n = sqrt_intxx(n);
     std::vector<float64> sieve_array(2 * M + 1, 0.0);
 
-    for (auto p : factor_base)
+    if (verbose)
     {
+        std::cout << "Searching roots..." << std::endl;
+    }
+    for (usize q = 0; q < factor_base.size(); ++q)
+    {
+        if (verbose)
+        {
+            std::cout << "  " << 100 * q / factor_base.size()
+                      << "%" << std::endl;
+        }
+        int32 p = factor_base[q];
         float64 log_p = std::log(p);
         auto roots = find_Qx_roots(n, sqrt_n, p);
         for (const auto& root : roots)
@@ -303,8 +319,18 @@ std::vector<SmoothNumber> find_smooth_numbers(
 
     float64 threshold = std::log(B) * 1.5;
     std::vector<SmoothNumber> smooth_numbers;
+    if (verbose)
+    {
+        std::cout << "Seive..." << std::endl;
+    }
     for (int32 x = -M; x < M + 1; ++x)
     {
+        constexpr int M_factor = 10;
+        if (verbose && ((x + M) % (M / M_factor) == 0))
+        {
+            std::cout << "  " << 100 * (x + M) / (2 * M) << "%"
+                      << std::endl;
+        }
         int32 idx = x + M;
         intxx Q_x = (x + sqrt_n) * (x + sqrt_n) - n;
 
@@ -333,7 +359,7 @@ std::vector<SmoothNumber> find_smooth_numbers(
     return smooth_numbers;
 }
 
-Matrix<int32> build_exponent_matrix(
+static Matrix<int32> build_exponent_matrix(
     const FactorBase& factor_base,
     const std::vector<SmoothNumber>& smooth_numbers
 )
@@ -368,7 +394,7 @@ Matrix<int32> build_exponent_matrix(
     return matrix;
 }
 
-intxx find_devider(
+static intxx find_devider(
     const intxx& n,
     const std::vector<SmoothNumber>& smooth_numbers,
     const Matrix<int32>& dependencies
@@ -432,32 +458,63 @@ intxx find_devider(
         }
     }
 
-    return 1;
+    return 0;
 }
 
 std::vector<intxx> factor_QS_parm(
     const intxx& n,
     int32 B,
     int32 M,
+    bool verbose,
     FactorQsError& error_code
 )
 {
     error_code = FactorQsError::success;
+    if (verbose)
+    {
+        std::cout << "Bulding factor base [B = "
+                  << B << "]..." << std::endl;
+    }
     FactorBase factor_base = find_factor_base(n, B);
+    if (verbose)
+    {
+        std::cout << "Factor base size: "
+                  << factor_base.size() << std::endl;
+    }
 
+    if (verbose)
+    {
+        std::cout << "Finding smooth numbers [B = "
+                  << B << ", M = " << M
+                  << "]..." << std::endl;
+    }
     std::vector<SmoothNumber> smooth_numbers =
-                            find_smooth_numbers(n, B, M, factor_base);
+                    find_smooth_numbers(n, B, M, factor_base, verbose);
+
     if (smooth_numbers.size() < factor_base.size() + 10)
     {
         error_code = FactorQsError::no_smoots;
         return {};
     }
+    if (verbose)
+    {
+        std::cout << "Found " << smooth_numbers.size()
+                  << " smooth numbers: " << std::endl;
+    }
 
+    if (verbose)
+    {
+        std::cout << "Creating matrix..." << std::endl;
+    }
     Matrix<int32> matrix = build_exponent_matrix(
         factor_base,
         smooth_numbers
     );
 
+    if (verbose)
+    {
+        std::cout << "Finding dependencies..." << std::endl;
+    }
     Matrix<int32> dependencies = gaussian_elimination_mod2(matrix);
     if (!dependencies.size())
     {
@@ -465,15 +522,41 @@ std::vector<intxx> factor_QS_parm(
         return {};
     }
 
+    if (verbose)
+    {
+        std::cout << "Finding devider..." << std::endl;
+    }
     intxx d = find_devider(n, smooth_numbers, dependencies);
+    if (verbose)
+    {
+        std::cout << "Found devider " << d << std::endl;
+    }
 
-    return {d, n / d};
+    std::vector<intxx> ret;
+    if (d != 0 && d != 1) {
+        return {d, n / d};
+        ret.push_back(d / n);
+        ret.push_back(std::move(d));
+    }
+    if (verbose)
+    {
+        std::cout << "Output: {";
+        if (0 < ret.size()) {
+            std::cout << ret[0] << std::endl;
+            for (usize q = 1; q < ret.size(); ++q) {
+                std::cout << ", " << ret[q];
+            }
+        }
+        std::cout << "}" << std::endl;
+    }
+    return ret;
 }
 
-std::vector<intxx> factor_QS(intxx n)
+std::vector<intxx> factor_QS(const intxx& n)
 {
     int32 B = 1000;
     int32 M = 5000;
+    bool verbose = false;
     FactorQsError error_code;
-    return factor_QS_parm(n, B, M, error_code);
+    return factor_QS_parm(n, B, M, verbose, error_code);
 }
