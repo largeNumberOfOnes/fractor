@@ -3,12 +3,48 @@
 #include <cxxopts.hpp>
 #include <iostream>
 #include <iomanip>
+#include <csignal>
+#include <cmath>
+
+namespace statistics
+{
+    static usize count = 0;
+    static double sum = 0;
+    static double square_sum = 0;
+
+    void add_measurement(double value)
+    {
+        count++;
+        sum += value;
+        square_sum += value * value;
+    }
+
+    void show()
+    {
+        if(count == 0)
+            return;
+
+        double m = sum / count;
+        double d = std::sqrt(square_sum / count - m*m);
+        std::cout << "Mean:      " << m << " ms" << std::endl;
+        std::cout << "Deviation: " << d << " ms" << std::endl;
+    }
+
+    void sigint_handler(int sig)
+    {
+        std::cout << std::endl;
+        show();
+        exit(0);
+    }
+}
 
 int main(int argc, char **argv)
 {
+    std::signal(SIGINT, statistics::sigint_handler);
+
     usize output_width      = 25;
     bool verify             = false;
-    bool show_delta_time    = false;
+    bool show_time          = false;
     uint8 com_port          = 0;
     FractorBase *fractor    = nullptr;
 
@@ -55,7 +91,7 @@ int main(int argc, char **argv)
             output_width = flags["width"].as<usize>();
 
         verify          = flags.count("verify");
-        show_delta_time = flags.count("time");
+        show_time = flags.count("time");
 
         if(flags.count("port"))
             com_port = flags["port"].as<uint8>();
@@ -99,7 +135,7 @@ int main(int argc, char **argv)
     uint32 factor_size  = 0;
 
     std::cout << std::right;
-    while(std::cin)
+    while(std::cin.peek() != EOF)
     {
         raw_read(semiprime, size);
 
@@ -107,11 +143,14 @@ int main(int argc, char **argv)
         bool success = fractor->handle(semiprime, left, right);
         auto end_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
+        if(show_time)
+            statistics::add_measurement(elapsed.count());
 
         if(!success)
         {
             std::cerr << "Can't factor number(" << size;
             std::cerr << " bytes): " << semiprime << std::endl;
+            statistics::show();
             return -1;
         }
 
@@ -136,7 +175,8 @@ int main(int argc, char **argv)
                 std::cerr << std::setw(half_output_width) << left;
                 std::cerr << " * " << std::setw(half_output_width);
                 std::cerr << right << std::endl;
-                return 0;
+                statistics::show();
+                return -1;
             }
         }
 
@@ -144,7 +184,7 @@ int main(int argc, char **argv)
         std::cout << std::setw(half_output_width) << left << " * ";
         std::cout << std::setw(half_output_width) << right;
 
-        if(show_delta_time)
+        if(show_time)
         {
             std::cout << "   + " << std::setw(10); 
             std::cout << static_cast<uint32>(elapsed.count()) << " ms";
@@ -152,4 +192,5 @@ int main(int argc, char **argv)
 
         std::cout<< std::endl;
     }
+    statistics::show();
 }
