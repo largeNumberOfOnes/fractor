@@ -1,4 +1,5 @@
 #include <share/require.h>
+#include <unordered_map>
 #include <fr/comio.h>
 #include <termios.h>
 #include <iostream>
@@ -6,16 +7,46 @@
 #include <string.h>
 #include <fcntl.h>
 
-int comio_open(std::string dev, uint32 baud_rate)
+static const std::unordered_map<uint32, speed_t> baud_rate_map
 {
-    int fd = open(dev.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
+    {300,       B300    },
+    {600,       B600    },
+    {1200,      B1200   },
+    {2400,      B2400   },
+    {4800,      B4800   },
+    {9600,      B9600   },
+    {19200,     B19200  },
+    {38400,     B38400  },
+    {57600,     B57600  },
+    {115200,    B115200 },
+    {230400,    B230400 },
+    {460800,    B460800 },
+    {500000,    B500000 },
+    {576000,    B576000 },
+    {921600,    B921600 },
+    {1000000,   B1000000},
+    {1152000,   B1152000},
+    {1500000,   B1500000},
+    {2000000,   B2000000},
+    {2500000,   B2500000},
+    {3000000,   B3000000},
+    {3500000,   B3500000},
+    {4000000,   B4000000}
+};
+
+int comio::open(const std::string &dev, uint32 baud_rate)
+{
+    int fd = ::open(dev.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
     require(fd >= 0, ("Can't open com port[" + dev + "]").c_str());
 
     termios tty;
     require(!tcgetattr(fd, &tty), "Error in method tcgetattr");
 
-    cfsetospeed(&tty, static_cast<speed_t>(baud_rate));
-    cfsetispeed(&tty, static_cast<speed_t>(baud_rate));
+    auto it = baud_rate_map.find(baud_rate);
+    require(it != baud_rate_map.end(), "Unsupported baud rate");
+    speed_t speed = it->second;
+    cfsetospeed(&tty, speed);
+    cfsetispeed(&tty, speed);
 
     // 8 data-bits & 1 stop-bit
     tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;
@@ -33,26 +64,26 @@ int comio_open(std::string dev, uint32 baud_rate)
     return fd;
 }
 
-void comio_send(int fd, const byte *buffer, uint32 len)
+static void comio_send(int fd, const byte *buffer, uint32 len)
 {
     write(fd, buffer, len);
 }
 
-void comio_receive(int fd, byte *buffer, uint32 len)
+static void comio_receive(int fd, byte *buffer, uint32 len)
 {
     ssize_t size = read(fd, buffer, len);
     require(size == len, "COM timeout");
 }
 
-void comio_close(int fd)
+void comio::close(int fd)
 {
     close(fd);
 }
 
-#define SYNC1 static_cast<byte>(0x55)
-#define SYNC2 static_cast<byte>(0xAA)
+static constexpr byte SYNC1 = byte{0x55};
+static constexpr byte SYNC2 = byte{0xAA};
 
-void comio_send_packet(int fd, byte cmd, uint16 len, const byte *payload)
+void comio::send_packet(int fd, byte cmd, uint16 len, const byte *payload)
 {
     uint32 buffer_len = 2 + sizeof(cmd) + sizeof(len) + len;
     byte *buffer = new byte[buffer_len];
@@ -68,7 +99,7 @@ void comio_send_packet(int fd, byte cmd, uint16 len, const byte *payload)
     comio_send(fd, buffer, buffer_len);
 }
 
-uint16 comio_receive_packet(int fd, byte *cmd, byte *payload)
+uint16 comio::receive_packet(int fd, byte *cmd, byte *payload)
 {
     byte sync = static_cast<byte>(0);
     while(true)

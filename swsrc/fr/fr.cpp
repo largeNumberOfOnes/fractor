@@ -45,8 +45,9 @@ int main(int argc, char **argv)
     usize output_width      = 25;
     bool verify             = false;
     bool show_time          = false;
-    uint8 com_port          = 0;
+    std::string com_port    = "/dev/ttyUSB0";
     FractorBase *fractor    = nullptr;
+    uint32 baud_rate        = 115200;
 
     try
     {
@@ -68,9 +69,16 @@ int main(int argc, char **argv)
             )
             (
                 "p,port",
-                "set number of com port for FPGA",
-                cxxopts::value<uint8>()->default_value(
-                    std::to_string(com_port)
+                "set com port for FPGA",
+                cxxopts::value<std::string>()->default_value(
+                    com_port
+                )
+            )
+            (
+                "b,baud",
+                "set baud rate for com port",
+                cxxopts::value<uint32>()->default_value(
+                    std::to_string(baud_rate)
                 )
             )
             (
@@ -90,11 +98,14 @@ int main(int argc, char **argv)
         if(flags.count("width"))
             output_width = flags["width"].as<usize>();
 
-        verify          = flags.count("verify");
-        show_time = flags.count("time");
+        verify      = flags.count("verify");
+        show_time   = flags.count("time");
 
         if(flags.count("port"))
-            com_port = flags["port"].as<uint8>();
+            com_port = flags["port"].as<std::string>();
+
+        if(flags.count("baud"))
+            baud_rate = flags["baud"].as<uint32>();
 
         if(flags.count("mode"))
         {
@@ -106,6 +117,14 @@ int main(int argc, char **argv)
             else if(mode_str == "ecm")
             {
                 fractor = new ECMFractor();
+            }
+            else if(mode_str == "hw")
+            {
+                fractor = new HeteroFractor(com_port, baud_rate, false);
+            }
+            else if(mode_str == "share")
+            {
+                fractor = new HeteroFractor(com_port, baud_rate, true);
             }
             else
             {
