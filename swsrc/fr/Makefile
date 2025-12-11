@@ -1,2 +1,2 @@
 all:
-	g++ fr.cpp -lgmp -I../include ../share/rawio.cpp ../algs/factor_qs.cpp -lgmpxx -o ../../build/fr
+	g++ ./*.cpp -lgmp -I../include ../share/rawio.cpp ../algs/*.cpp -lgmpxx -o ../../build/fr
