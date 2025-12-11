@@ -1,14 +1,23 @@
 #include <algs/factor_qs.h>
+#include <algs/factor_ecm.h>
 #include <share/rawio.h>
 #include <cxxopts.hpp>
 #include <iostream>
 #include <iomanip>
+
+enum class fr_mode
+{
+    share,
+    solo
+};
 
 int main(int argc, char **argv)
 {
     usize output_width      = 25;
     bool verify             = false;
     bool show_delta_time    = false;
+    uint8 com_port          = 0;
+    fr_mode mode            = fr_mode::share;
 
     try
     {
@@ -27,6 +36,21 @@ int main(int argc, char **argv)
                 cxxopts::value<usize>()->default_value(
                     std::to_string(output_width)
                 )
+            )
+            (
+                "p,port",
+                "set number of com port for FPGA",
+                cxxopts::value<uint8>()->default_value(
+                    std::to_string(com_port)
+                )
+            )
+            (
+                "m,mode",
+                "set mode: share | solo",
+                cxxopts::value<std::string>()->default_value
+                (
+                    "share"
+                )
             );
 
         cxxopts::ParseResult flags = options.parse(argc, argv);
@@ -42,6 +66,27 @@ int main(int argc, char **argv)
 
         verify          = flags.count("verify");
         show_delta_time = flags.count("time");
+
+        if(flags.count("port"))
+            com_port = flags["port"].as<uint8>();
+
+        if(flags.count("mode"))
+        {
+            std::string mode_str = flags["mode"].as<std::string>();
+            if(mode_str == "share")
+            {
+                mode = fr_mode::share;
+            }
+            else if(mode_str == "solo")
+            {
+                mode = fr_mode::solo;
+            }
+            else
+            {
+                std::cerr << "Incorrect mode option" << std::endl;
+                return 1;
+            }
+        }
     }
     catch(const cxxopts::exceptions::exception& e)
     {
@@ -51,9 +96,10 @@ int main(int argc, char **argv)
 
     usize half_output_width = (output_width + 1) / 2;
 
-
     int32 qs_B = 1000;
     int32 qs_M = 5000;
+    int32 ecm_B = 2000;
+    int32 ecm_C = 10;
 
     intxx semiprime     = 0;
     intxx first         = 0;
@@ -62,6 +108,7 @@ int main(int argc, char **argv)
     uint32 factor_size  = 0;
 
     FactorQsError qs_error;
+    FactorEcmError ecm_error;
 
     std::vector<intxx> result;
     std::cout << std::right;
@@ -69,7 +116,8 @@ int main(int argc, char **argv)
     {
         raw_read(semiprime, size);
         auto start_time = std::chrono::high_resolution_clock::now();
-        result = factor_QS_parm(semiprime, qs_B, qs_M, qs_error);
+        // result = factor_QS_parm(semiprime, qs_B, qs_M, qs_error);
+        result = factor_ECM_parm(semiprime, ecm_B, ecm_C, ecm_error);
         auto end_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
 
@@ -87,11 +135,7 @@ int main(int argc, char **argv)
 
             bool check_1 = (result[0] == first) && (result[1] == second);
             bool check_2 = (result[1] == first) && (result[0] == second);
-            if(check_1 | check_2)
-            {
-
-            }
-            else
+            if(!(check_1 | check_2))
             {
                 std::cerr << "Bad factorization:" << std::endl;
                 std::cerr << "    input(" << size << " bytes): ";
@@ -112,10 +156,12 @@ int main(int argc, char **argv)
         std::cout << std::setw(output_width) << semiprime << " = ";
         std::cout << std::setw(half_output_width) << result[0] << " * ";
         std::cout << std::setw(half_output_width) << result[1];
-        
+
         if(show_delta_time)
+        {
             std::cout << "   + " << std::setw(10); 
             std::cout << static_cast<uint32>(elapsed.count()) << " ms";
+        }
 
         std::cout<< std::endl;
     }
