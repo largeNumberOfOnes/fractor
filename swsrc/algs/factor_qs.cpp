@@ -206,7 +206,7 @@ Matrix<int32> gaussian_elimination_mod2(const Matrix<int32>& matrix)
 
         for (int row = 0; row < m; ++row)
         {
-            if (row != col and A[row][col] == 1)
+            if (row != col & A[row][col] == 1)
             {
                 for (int c = 0; c < n; ++c)
                 {
@@ -470,7 +470,7 @@ std::vector<intxx> factor_QS_parm(
     return {d, n / d};
 }
 
-std::vector<intxx> factor_QS(intxx n)
+std::vector<intxx> factor_QS(const intxx &n)
 {
     int32 B = 1000;
     int32 M = 5000;

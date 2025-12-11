@@ -1,15 +1,8 @@
-#include <algs/factor_qs.h>
-#include <algs/factor_ecm.h>
+#include <fr/fractors.h>
 #include <share/rawio.h>
 #include <cxxopts.hpp>
 #include <iostream>
 #include <iomanip>
-
-enum class fr_mode
-{
-    share,
-    solo
-};
 
 int main(int argc, char **argv)
 {
@@ -17,7 +10,7 @@ int main(int argc, char **argv)
     bool verify             = false;
     bool show_delta_time    = false;
     uint8 com_port          = 0;
-    fr_mode mode            = fr_mode::share;
+    FractorBase *fractor    = nullptr;
 
     try
     {
@@ -46,11 +39,8 @@ int main(int argc, char **argv)
             )
             (
                 "m,mode",
-                "set mode: share | solo",
-                cxxopts::value<std::string>()->default_value
-                (
-                    "share"
-                )
+                "set mode: qs|ecm|hw|share",
+                cxxopts::value<std::string>()
             );
 
         cxxopts::ParseResult flags = options.parse(argc, argv);
@@ -73,19 +63,24 @@ int main(int argc, char **argv)
         if(flags.count("mode"))
         {
             std::string mode_str = flags["mode"].as<std::string>();
-            if(mode_str == "share")
+            if(mode_str == "qs")
             {
-                mode = fr_mode::share;
+                fractor = new QSFractor();
             }
-            else if(mode_str == "solo")
+            else if(mode_str == "ecm")
             {
-                mode = fr_mode::solo;
+                fractor = new ECMFractor();
             }
             else
             {
                 std::cerr << "Incorrect mode option" << std::endl;
                 return 1;
             }
+        }
+        else
+        {
+            std::cerr << "Mode option has no default value" << std::endl;
+            return 1;
         }
     }
     catch(const cxxopts::exceptions::exception& e)
@@ -95,33 +90,25 @@ int main(int argc, char **argv)
     }
 
     usize half_output_width = (output_width + 1) / 2;
-
-    int32 qs_B = 1000;
-    int32 qs_M = 5000;
-    int32 ecm_B = 2000;
-    int32 ecm_C = 10;
-
     intxx semiprime     = 0;
     intxx first         = 0;
     intxx second        = 0;
+    intxx left          = 0;
+    intxx right         = 0;
     uint32 size         = 0;
     uint32 factor_size  = 0;
 
-    FactorQsError qs_error;
-    FactorEcmError ecm_error;
-
-    std::vector<intxx> result;
     std::cout << std::right;
     while(std::cin)
     {
         raw_read(semiprime, size);
+
         auto start_time = std::chrono::high_resolution_clock::now();
-        // result = factor_QS_parm(semiprime, qs_B, qs_M, qs_error);
-        result = factor_ECM_parm(semiprime, ecm_B, ecm_C, ecm_error);
+        bool success = fractor->handle(semiprime, left, right);
         auto end_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
 
-        if(result.size() < 2)
+        if(!success)
         {
             std::cerr << "Can't factor number(" << size;
             std::cerr << " bytes): " << semiprime << std::endl;
@@ -133,8 +120,8 @@ int main(int argc, char **argv)
             raw_read(first, factor_size);
             raw_read(second, factor_size);
 
-            bool check_1 = (result[0] == first) && (result[1] == second);
-            bool check_2 = (result[1] == first) && (result[0] == second);
+            bool check_1 = (left == first) && (right == second);
+            bool check_2 = (right == first) && (left == second);
             if(!(check_1 | check_2))
             {
                 std::cerr << "Bad factorization:" << std::endl;
@@ -146,16 +133,16 @@ int main(int argc, char **argv)
                 std::cerr << " * " << std::setw(half_output_width);
                 std::cerr << second << std::endl;
                 std::cerr << "    given:    ";
-                std::cerr << std::setw(half_output_width) << result[0];
+                std::cerr << std::setw(half_output_width) << left;
                 std::cerr << " * " << std::setw(half_output_width);
-                std::cerr << result[1] << std::endl;
+                std::cerr << right << std::endl;
                 return 0;
             }
         }
 
         std::cout << std::setw(output_width) << semiprime << " = ";
-        std::cout << std::setw(half_output_width) << result[0] << " * ";
-        std::cout << std::setw(half_output_width) << result[1];
+        std::cout << std::setw(half_output_width) << left << " * ";
+        std::cout << std::setw(half_output_width) << right;
 
         if(show_delta_time)
         {
