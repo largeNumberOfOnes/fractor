@@ -1,5 +1,6 @@
 #include "algs/factor_ecm.h"
 
+#include <iostream>
 #include <optional>
 #include <vector>
 
@@ -29,7 +30,7 @@ class IntxxRandomGenerator
         }
 };
 
-intxx div(const intxx& a, const intxx& b)
+static intxx div(const intxx& a, const intxx& b)
 {
     intxx q = a / b;
     intxx r = a % b;
@@ -39,7 +40,7 @@ intxx div(const intxx& a, const intxx& b)
     return q;
 }
 
-intxx mod(const intxx& a, const intxx& b)
+static intxx mod(const intxx& a, const intxx& b)
 {
     intxx r = a % b;
     if (r != 0 && ((a < 0) ^ (b < 0))) {
@@ -48,7 +49,7 @@ intxx mod(const intxx& a, const intxx& b)
     return r;
 }
 
-std::optional<intxx> mod_inverse(const intxx& a, const intxx& n)
+static std::optional<intxx> mod_inverse(const intxx& a, const intxx& n)
 {
     if (gcd(a, n) != 1)
     {
@@ -197,7 +198,6 @@ class EllipticCurve
         std::optional<Point> result;
         std::optional<Point> current = P;
 
-
         while (0 < k)
         {
             if ((k & 1) != 0)
@@ -212,65 +212,102 @@ class EllipticCurve
     }
 };
 
+Curve generate_curve(const intxx& n) {
+    static IntxxRandomGenerator generator;
+    intxx x0;
+    intxx y0;
+    intxx a;
+    intxx b;
+    while (true)
+    {
+        x0 = generator.generate(0, n - 1);
+        y0 = generator.generate(0, n - 1);
+        a  = generator.generate(0, n - 1);
+        b = (y0 * y0 - x0 * x0 * x0 - a * x0) % n;
+        intxx disc = (4 * a * a * a + 27 * b * b) % n;
+        if (gcd(disc, n) == 1)
+        {
+            break;
+        }
+    }
+    return {x0, y0, a, b};
+}
+
+static std::vector<intxx> factor(
+    const intxx& n,
+    int32 B,
+    Curve vals
+) {
+    EllipticCurve curve{vals.a, vals.b, n};
+    EllipticCurve::Point P{vals.x0, vals.y0};
+
+    intxx k = 1;
+    std::vector<int32> primes = sieve_of_eratosthenes(B);
+    for (int32 p : primes)
+    {
+        int32 power = p;
+        while (power <= B)
+        {
+            k *= p;
+            power *= p;
+        }
+    }
+
+    intxx del = 0;
+    auto Q = curve.multiply(k, P, &del);
+    if (!Q.has_value())
+    {
+        if (del != 0 && del != 1)
+        {
+            if (del != 0 && del != 1) {
+                return {del, n / del};
+            }
+        }
+        else
+        {
+            // Special case: point at infinity
+            // It may mean that the order of the point divides k
+            // Further verification is required
+            // And he knows what needs to be done...
+            // pass // DEV
+        }
+    }
+
+    return {};
+}
+
 std::vector<intxx> factor_ECM_parm(
     const intxx& n,
     int32 B,
     int32 C,
+    int32 ,
+    bool verbose,
     FactorEcmError& error_code
 )
 {
     error_code = FactorEcmError::success;
-    IntxxRandomGenerator generator;
+
     for (int curve_num = 0; curve_num < C; ++curve_num)
     {
-        intxx x0;
-        intxx y0;
-        intxx a;
-        intxx b;
-        while (true)
+        Curve vals = generate_curve(n);
+        if (verbose)
         {
-            x0 = generator.generate(0, n - 1);
-            y0 = generator.generate(0, n - 1);
-            a  = generator.generate(0, n - 1);
-            b = (y0 * y0 - x0 * x0 * x0 - a * x0) % n;
-            intxx disc = (4 * a * a * a + 27 * b * b) % n;
-            if (gcd(disc, n) == 1)
-            {
-                break;
-            }
+            std::cout << "Generate curve: \n"
+                      << "  x0: " << vals.x0 << "\n"
+                      << "  y0: " << vals.y0 << "\n"
+                      << "  a : " << vals.a << "\n"
+                      << "  b : " << vals.b << std::endl;
         }
 
-        EllipticCurve curve{a, b, n};
-        EllipticCurve::Point P{x0, y0};
+        // std::jthread t{
+        //     []() {
+        //         Curve vals = generate_curve(n);
+        //     }
+        // }
 
-        intxx k = 1;
-        std::vector<int32> primes = sieve_of_eratosthenes(B);
-        for (int32 p : primes)
-        {
-            int32 power = p;
-            while (power <= B)
-            {
-                k *= p;
-                power *= p;
-            }
-        }
-
-        intxx del = 0;
-        auto Q = curve.multiply(k, P, &del);
-        if (!Q.has_value())
-        {
-            if (del != 0 && del != 1)
-            {
-                return {del, n / del};
-            }
-            else
-            {
-                // Special case: point at infinity
-                // It may mean that the order of the point divides k
-                // Further verification is required
-                // And he knows what needs to be done...
-                // pass // DEV
-            }
+        std::vector<intxx> ret = factor(n, B, std::move(vals));
+        if (!ret.empty()) {
+            return ret;
         }
     }
 
@@ -281,7 +318,22 @@ std::vector<intxx> factor_ECM_parm(
 std::vector<intxx> factor_ECM(const intxx& n)
 {
     FactorEcmError error_code;
-    int32 B = 2000;
-    int32 C = 10;
-    return factor_ECM_parm(n, B, C, error_code);
+    constexpr int attempts = 14;
+    constexpr int32 B = 2000;
+    constexpr int32 C = 10;
+    constexpr int32 procs = 1;
+    for (int q = 0; q < attempts; ++q) {
+        std::vector<intxx> ret = factor_ECM_parm(
+            n,
+            B << q,
+            C << q,
+            procs,
+            false,
+            error_code
+        );
+        if (!ret.empty()) {
+            return ret;
+        }
+    }
+    return {};
 }
