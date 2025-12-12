@@ -19,6 +19,7 @@ std::vector<intxx> factor_QS_parm(
     const intxx& n,
     int32 B,
     int32 M,
+    int32 procs,
     bool verbose,
     FactorQsError& error_code
 );
@@ -28,5 +29,12 @@ std::vector<intxx> factor_QS_parm(
 // May returns empty list if no factors found
 // Error code omitted, verbose = false
 std::vector<intxx> factor_QS(const intxx& n);
+
+// Factorize a number using the quadratic sieve method
+// Parameters will be selected based on the length of the number
+// procs -- processors count
+// May returns empty list if no factors found
+// Error code omitted, verbose = false
+std::vector<intxx> factor_QS_mt(const intxx& n, int32 procs);
 
 #endif // FACTOR_QS_HEADER

@@ -1,5 +1,6 @@
 #include "algs/factor_qs.h"
 
+#include <algorithm>
 #include <unordered_map>
 #include <iostream>
 #include <utility>
@@ -285,12 +286,14 @@ static Factors factor_over_base(intxx num, const FactorBase& factor_base)
 }
 
 static std::vector<SmoothNumber> find_smooth_numbers(
-    intxx n, int32 B, int32 M, const FactorBase& factor_base,
+    intxx n, int32 B, int32 M, int32 procs, const FactorBase& factor_base,
     bool verbose
 )
 {
     intxx sqrt_n = sqrt_intxx(n);
     std::vector<float64> sieve_array(2 * M + 1, 0.0);
+
+    if (procs) {} // DEV [fake]
 
     if (verbose)
     {
@@ -465,6 +468,7 @@ std::vector<intxx> factor_QS_parm(
     const intxx& n,
     int32 B,
     int32 M,
+    int32 procs,
     bool verbose,
     FactorQsError& error_code
 )
@@ -489,17 +493,16 @@ std::vector<intxx> factor_QS_parm(
                   << "]..." << std::endl;
     }
     std::vector<SmoothNumber> smooth_numbers =
-                    find_smooth_numbers(n, B, M, factor_base, verbose);
-
-    if (smooth_numbers.size() < factor_base.size() + 10)
-    {
-        error_code = FactorQsError::no_smoots;
-        return {};
-    }
+                find_smooth_numbers(n, B, M, procs, factor_base, verbose);
     if (verbose)
     {
         std::cout << "Found " << smooth_numbers.size()
                   << " smooth numbers: " << std::endl;
+    }
+    if (smooth_numbers.size() < factor_base.size() + 10)
+    {
+        error_code = FactorQsError::no_smoots;
+        return {};
     }
 
     if (verbose)
@@ -552,12 +555,21 @@ std::vector<intxx> factor_QS_parm(
     return ret;
 }
 
-
-std::vector<intxx> factor_QS(const intxx &n)
+std::vector<intxx> factor_QS_mt(const intxx &n, int32 procs)
 {
     int32 B = 1000;
     int32 M = 5000;
     bool verbose = false;
     FactorQsError error_code;
-    return factor_QS_parm(n, B, M, verbose, error_code);
+    return factor_QS_parm(n, B, M, procs, verbose, error_code);
+}
+
+std::vector<intxx> factor_QS(const intxx &n)
+{
+    int32 B = 1000;
+    int32 M = 5000;
+    int32 procs = 10;
+    bool verbose = false;
+    FactorQsError error_code;
+    return factor_QS_parm(n, B, M, procs, verbose, error_code);
 }
