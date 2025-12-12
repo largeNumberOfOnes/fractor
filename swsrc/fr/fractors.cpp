@@ -4,6 +4,7 @@
 #include <fr/fractors.h>
 #include <fr/fpgaio.h>
 #include <fr/comio.h>
+#include <thread>
 
 bool QSFractor::handle
 (
@@ -12,7 +13,7 @@ bool QSFractor::handle
     intxx &right
 )
 {
-    std::vector<intxx> result = factor_QS(semiprime);
+    std::vector<intxx> result = factor_QS_mt(semiprime, nproc);
     if(result.size() != 2)
         return false;
 
@@ -28,7 +29,8 @@ bool ECMFractor::handle
     intxx &right
 )
 {
-    std::vector<intxx> result = factor_ECM(semiprime);
+    std::atomic<bool> stop{false};
+    std::vector<intxx> result = factor_ECM_mt(semiprime, nproc, stop);
     if(result.size() != 2)
         return false;
 
@@ -44,9 +46,64 @@ bool HeteroFractor::handle
     intxx &right
 )
 {
-    std::cout << use_cpu << std::endl;
+    std::atomic<bool> success{false};
+    std::atomic<bool> stop{false};
+    std::vector<intxx> result;
+    std::thread soft_thread;
 
-    return false;
+    if(use_cpu)
+    {
+        soft_thread = std::thread(
+        [
+            &semiprime,
+            &stop,
+            &result,
+            &success,
+            &left,
+            &right
+        ]
+        (int32 nproc)
+        {
+            std::vector<intxx> soft_result = factor_ECM_mt
+            (
+                semiprime,
+                nproc,
+                stop
+            );
+            if(soft_result.size() == 2)
+            {
+                if(success.exchange(true))
+                    return;
+                left    = result[0];
+                right   = result[1];
+            }
+        }, nproc);
+    }
+
+    // init
+
+    for(int i = 0; i < fpgaio::max_curves; i++)
+    {
+        // com
+
+        if(stop)
+        {
+            // abort
+            break;
+        }
+
+        if(1)
+        {
+            if(success.exchange(true))
+                return;
+            stop.store(true);
+            right = semiprime / left;
+        }
+    }
+
+    if(use_cpu)
+        soft_thread.join();
+    return success;
 }
 
 HeteroFractor::HeteroFractor

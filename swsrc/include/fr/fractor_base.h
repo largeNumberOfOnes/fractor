@@ -5,6 +5,9 @@
 
 class FractorBase
 {
+protected:
+    int32 nproc = 1;
+
 public:
     // returns true if success
     virtual bool handle
@@ -15,6 +18,11 @@ public:
     ) = 0;
 
     virtual ~FractorBase() = default;
+
+    void set_nproc(int32 nproc)
+    {
+        this->nproc = nproc;
+    }
 };
 
 #endif // FRACTOR_BASE_HEADER

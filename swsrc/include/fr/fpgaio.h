@@ -5,6 +5,8 @@
 
 namespace fpgaio
 {
+    constexpr int32 max_curves      = 10;
+
     constexpr byte CMD_PING         = byte{0x01};
     constexpr byte CMD_SET_N        = byte{0x02};
     constexpr byte CMD_SET_ECM      = byte{0x03};

@@ -89,7 +89,7 @@ int main(int argc, char **argv)
             (
                 "n,nproc",
                 "set number of software computing processes",
-                cxxopts::value<uint32>()->default_value("1")
+                cxxopts::value<int32>()->default_value("1")
             );
 
         cxxopts::ParseResult flags = options.parse(argc, argv);
@@ -142,6 +142,9 @@ int main(int argc, char **argv)
             std::cerr << "Mode option has no default value" << std::endl;
             return 1;
         }
+
+        if(flags.count("nproc"))
+            fractor->set_nproc(flags["nproc"].as<int32>());
     }
     catch(const cxxopts::exceptions::exception& e)
     {
