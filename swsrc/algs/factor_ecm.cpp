@@ -283,6 +283,7 @@ std::vector<intxx> factor_ECM_parm(
     int32 B,
     int32 C,
     int32 procs,
+    std::atomic<bool>& stop,
     bool verbose,
     FactorEcmError& error_code
 )
@@ -304,7 +305,6 @@ std::vector<intxx> factor_ECM_parm(
 
     std::mutex m{};
     std::vector<intxx> ret;
-    bool stop = false;
 
     int count = C / procs;
 
@@ -321,12 +321,12 @@ std::vector<intxx> factor_ECM_parm(
             std::vector<intxx> lret = factor(n, B, std::move(vals));
 
             std::lock_guard<std::mutex> g{m};
-            if (stop) {
+            if (stop.load()) {
                 return;
             }
             if (!lret.empty()) {
                 ret = std::move(lret);
-                stop = true;
+                stop.store(true);
                 return;
             }
 
@@ -348,7 +348,11 @@ std::vector<intxx> factor_ECM_parm(
     return {};
 }
 
-std::vector<intxx> factor_ECM_mt(const intxx& n, int32 procs)
+std::vector<intxx> factor_ECM_mt(
+    const intxx& n,
+    int32 procs,
+    std::atomic<bool>& stop
+)
 {
     FactorEcmError error_code;
     constexpr int attempts = 14;
@@ -360,6 +364,7 @@ std::vector<intxx> factor_ECM_mt(const intxx& n, int32 procs)
             B << q,
             C << q,
             procs,
+            stop,
             false,
             error_code
         );
@@ -377,12 +382,14 @@ std::vector<intxx> factor_ECM(const intxx& n)
     constexpr int32 B = 2000;
     constexpr int32 C = 10;
     constexpr int32 procs = 1;
+    std::atomic<bool> stop{false};
     for (int q = 0; q < attempts; ++q) {
         std::vector<intxx> ret = factor_ECM_parm(
             n,
             B << q,
             C << q,
             procs,
+            stop,
             false,
             error_code
         );
