@@ -18,6 +18,7 @@ struct Curve {
     intxx b;
 };
 
+// Return random curve coefficients
 Curve generate_curve(const intxx& n);
 
 // Factorize a number using the elliptic curve factorization method
@@ -39,5 +40,12 @@ std::vector<intxx> factor_ECM_parm(
 // May returns empty list if no factors found
 // Error code omitted
 std::vector<intxx> factor_ECM(const intxx& n);
+
+// Factorize a number using the elliptic curve factorization method
+// Parameters will be selected based on the length of the number
+// procs -- processors count
+// May returns empty list if no factors found
+// Error code omitted
+std::vector<intxx> factor_ECM_mt(const intxx& n, int32 procs);
 
 #endif // FACTOR_ECM_HEADER

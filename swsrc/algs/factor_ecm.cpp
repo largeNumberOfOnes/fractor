@@ -348,6 +348,28 @@ std::vector<intxx> factor_ECM_parm(
     return {};
 }
 
+std::vector<intxx> factor_ECM_mt(const intxx& n, int32 procs)
+{
+    FactorEcmError error_code;
+    constexpr int attempts = 14;
+    constexpr int32 B = 2000;
+    constexpr int32 C = 10;
+    for (int q = 0; q < attempts; ++q) {
+        std::vector<intxx> ret = factor_ECM_parm(
+            n,
+            B << q,
+            C << q,
+            procs,
+            false,
+            error_code
+        );
+        if (!ret.empty()) {
+            return ret;
+        }
+    }
+    return {};
+}
+
 std::vector<intxx> factor_ECM(const intxx& n)
 {
     FactorEcmError error_code;
