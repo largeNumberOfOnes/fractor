@@ -3,6 +3,8 @@
 #include <iostream>
 #include <optional>
 #include <vector>
+#include <thread>
+#include <mutex>
 
 #include <gmpxx.h>
 
@@ -280,35 +282,66 @@ std::vector<intxx> factor_ECM_parm(
     const intxx& n,
     int32 B,
     int32 C,
-    int32 ,
+    int32 procs,
     bool verbose,
     FactorEcmError& error_code
 )
 {
     error_code = FactorEcmError::success;
 
-    for (int curve_num = 0; curve_num < C; ++curve_num)
-    {
-        Curve vals = generate_curve(n);
-        if (verbose)
-        {
-            std::cout << "Generate curve: \n"
-                      << "  x0: " << vals.x0 << "\n"
-                      << "  y0: " << vals.y0 << "\n"
-                      << "  a : " << vals.a << "\n"
-                      << "  b : " << vals.b << std::endl;
-        }
+    // for (int curve_num = 0; curve_num < C; ++curve_num)
+    // {
+    //     Curve vals = generate_curve(n);
+    //     if (verbose)
+    //     {
+    //         std::cout << "Generate curve: \n"
+    //                   << "  x0: " << vals.x0 << "\n"
+    //                   << "  y0: " << vals.y0 << "\n"
+    //                   << "  a : " << vals.a << "\n"
+    //                   << "  b : " << vals.b << std::endl;
+    //     }
+    if (verbose) {}
 
-        // std::jthread t{
-        //     []() {
-        //         Curve vals = generate_curve(n);
-        //     }
-        // }
+    std::mutex m{};
+    std::vector<intxx> ret;
+    bool stop = false;
 
-        std::vector<intxx> ret = factor(n, B, std::move(vals));
-        if (!ret.empty()) {
-            return ret;
+    int count = C / procs;
+
+    auto task = [
+        &n = std::as_const(n),
+        B = B,
+        count = count,
+        &stop = stop,
+        &m = m,
+        &ret = ret
+    ]() {
+        for (int curve_num = 0; curve_num < count; ++curve_num) {
+            Curve vals = generate_curve(n);
+            std::vector<intxx> lret = factor(n, B, std::move(vals));
+
+            std::lock_guard<std::mutex> g{m};
+            if (stop) {
+                return;
+            }
+            if (!lret.empty()) {
+                ret = std::move(lret);
+                stop = true;
+                return;
+            }
+
         }
+    };
+
+    std::vector<std::thread> threads;
+    for (int q = 0; q < procs; ++q) {
+        threads.push_back(std::thread(task));
+    }
+    for (int q = 0; q < procs; ++q) {
+        threads[q].join();
+    }
+    if (!ret.empty()) {
+        return ret;
     }
 
     error_code = FactorEcmError::no_found;
