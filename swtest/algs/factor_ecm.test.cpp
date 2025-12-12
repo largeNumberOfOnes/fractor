@@ -59,11 +59,18 @@ void test()
         {1649, {17, 97}},
         {10967535067, {104729, 104723}},
         {1279111203059, {1273471, 1004429}},
+        {intxx{"1000000028000000147"}, {1000000007, 1000000021}},
+        {
+            intxx{"3357344855097052383691197216895"},
+            {1833533448090515, 1831079143166693}
+        },
     };
 
     for (const auto& [n, ans] : test_data)
     {
         std::vector<intxx> ret = factor_ECM(n);
+        std::cout << n << std::endl;
+        print_array(ret);
         if (!comp_vec(ret, ans))
         {
             std::cout << "Error in test" << std::endl;

@@ -1,6 +1,6 @@
 #include "algs/factor_ecm.h"
 
-#include <iostream>
+// #include <iostream>
 #include <optional>
 #include <vector>
 #include <thread>
@@ -256,7 +256,7 @@ static std::vector<intxx> factor(
     }
 
     intxx del = 0;
-    auto Q = curve.multiply(k, P, &del);
+    auto Q = curve.multiply(std::move(k), P, &del);
     if (!Q.has_value())
     {
         if (del != 0 && del != 1)
