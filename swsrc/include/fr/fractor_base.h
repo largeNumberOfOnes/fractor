@@ -6,7 +6,7 @@
 class FractorBase
 {
 public:
-    // returns true if successs
+    // returns true if success
     virtual bool handle
     (
         const intxx &semiprime,
