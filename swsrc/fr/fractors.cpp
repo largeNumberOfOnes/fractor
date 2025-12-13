@@ -2,6 +2,7 @@
 #include <algs/factor_qs.h>
 #include <share/require.h>
 #include <fr/fractors.h>
+#include <share/rawio.h>
 #include <fr/fpgaio.h>
 #include <fr/comio.h>
 #include <thread>
@@ -80,22 +81,43 @@ bool HeteroFractor::handle
         }, nproc);
     }
 
-    // init
+    byte buffer[fpgaio::io_buffer_size] = {};
+    byte recv_cmd{0};
+    intxx Z = 0;
+
+    comio::send_packet(fd, fpgaio::CMD_PING, 0, buffer);
+    comio::receive_packet(fd, &recv_cmd, buffer);
+    require(recv_cmd == fpgaio::RSP_PING, "Incorrect ping response");
+
+    raw_bwrite(buffer, semiprime, fpgaio::num_size);
+    comio::send_packet(fd, fpgaio::CMD_SET_N, fpgaio::num_size, buffer);
+    comio::receive_packet(fd, &recv_cmd, buffer);
+    require(recv_cmd == fpgaio::RSP_ACK, "No ACK for SET_N");
+
+    // todo: what ?
+    comio::send_packet(fd, fpgaio::CMD_SET_ECM, 0, 0);
+    comio::receive_packet(fd, &recv_cmd, buffer);
+    require(recv_cmd == fpgaio::RSP_ACK, "No ACK for SET_ECM");
 
     for(int i = 0; i < fpgaio::max_curves; i++)
     {
-        // com
+        intxx A24 = 0;
+        // todo: what ?
+        comio::send_packet(fd, fpgaio::CMD_CURVE, 0, buffer);
+        comio::receive_packet(fd, &recv_cmd, buffer);
 
         if(stop)
         {
-            // abort
+            comio::send_packet(fd, fpgaio::CMD_ABORT, 0, buffer);
             break;
         }
 
-        if(1)
+        if(recv_cmd == fpgaio::RSP_FACTOR)
         {
             if(success.exchange(true))
-                return;
+                break;
+            raw_bread(buffer, Z, fpgaio::num_size);
+            left = gcd(Z, semiprime);
             stop.store(true);
             right = semiprime / left;
         }
