@@ -6,7 +6,8 @@
 namespace fpgaio
 {
     constexpr int32 max_curves      = 10;
-    constexpr int32 io_buffer_size  = 32;
+    constexpr int32 max_ladders     = 10;
+    constexpr int32 io_buffer_size  = 128;
     constexpr int32 num_size        = 32;
 
     constexpr byte CMD_PING         = byte{0x01};
