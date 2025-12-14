@@ -76,7 +76,7 @@ void test2() {
         // n, ans, (B, M)
         std::tuple<intxx, std::vector<intxx>, std::pair<int32, int32>>
     > test_data {
-        {intxx{"1279111203059"}, {1273471, 1004429}, {1000, 100000}},
+        {intxx{"1279111203059"}, {1273471, 1004429}, {100000, 100000}},
         // {
         //     intxx{"123456789012345678901234567890123456789"},
         //     {1273471, 1004429},
@@ -87,8 +87,10 @@ void test2() {
     for (const auto& [n, ans, pair] : test_data)
     {
         FactorQsError error_code; // DEV [should not ignored]
+        constexpr int32 procs = 1;
+        constexpr bool verbose = true;
         std::vector<intxx> ret =
-            factor_QS_parm(n, pair.first, pair.second, true, error_code);
+            factor_QS_parm(n, pair.first, pair.second, procs, verbose, error_code);
         if (!comp_vec(ret, ans))
         {
             std::cout << "n = " << n << std::endl;
