@@ -1,6 +1,6 @@
 #include "algs/factor_ecm.h"
 
-// #include <iostream>
+#include <iostream>
 #include <optional>
 #include <vector>
 #include <thread>
@@ -64,14 +64,7 @@ static std::optional<intxx> mod_inverse(const intxx& a, const intxx& n)
 
     while (r != 0)
     {
-        // intxx quotient = old_r / r;
-        intxx quotient = div(old_r, r); // DEV
-        // std::cout << "s " << s << std::endl
-        //           << "old_s " << old_s << std::endl
-        //           << "quotient " << quotient << std::endl;
-        // old_r = std::exchange(r, old_r - quotient * r);
-        // old_s = std::exchange(s, old_s - quotient * s);
-        // old_t = std::exchange(t, old_t - quotient * t);
+        intxx quotient = div(old_r, r);
         auto fn = +[](intxx& old, intxx& val, intxx& quotient)
         {
             intxx temp_old = val;
@@ -237,23 +230,11 @@ Curve generate_curve(const intxx& n) {
 
 static std::vector<intxx> factor(
     const intxx& n,
-    int32 B,
+    intxx k,
     Curve vals
 ) {
     EllipticCurve curve{vals.a, vals.b, n};
     EllipticCurve::Point P{vals.x0, vals.y0};
-
-    intxx k = 1;
-    std::vector<int32> primes = sieve_of_eratosthenes(B);
-    for (int32 p : primes)
-    {
-        int32 power = p;
-        while (power <= B)
-        {
-            k *= p;
-            power *= p;
-        }
-    }
 
     intxx del = 0;
     auto Q = curve.multiply(std::move(k), P, &del);
@@ -261,7 +242,8 @@ static std::vector<intxx> factor(
     {
         if (del != 0 && del != 1)
         {
-            if (del != 0 && del != 1) {
+            if (del != 0 && del != 1)
+            {
                 return {del, n / del};
             }
         }
@@ -306,19 +288,45 @@ std::vector<intxx> factor_ECM_parm(
     std::mutex m{};
     std::vector<intxx> ret;
 
-    int count = C / procs;
+    int count = C;
+
+    intxx k = 1;
+    std::vector<int32> primes = sieve_of_eratosthenes(B);
+    for (int32 p : primes)
+    {
+        int32 power = p;
+        while (power <= B)
+        {
+            k *= p;
+            power *= p;
+        }
+    }
+    if (verbose)
+    {
+        std::cout << "Factorization with ECM\n"
+                  << "  of n = " << n << " \n"
+                  << "  of size "
+                    << mpz_sizeinbase(n.get_mpz_t(), 2) / 8 << " bytes\n"
+                  << "  B = " << B
+                  << "  k = " << k
+                  << "  size of k =  "
+                    << mpz_sizeinbase(k.get_mpz_t(), 2) / 8 << " bytes"
+                  << "  numbers of procs = " << procs
+                  << std::endl;
+    }
 
     auto task = [
         &n = std::as_const(n),
-        B = B,
+        &k = std::as_const(k),
         count = count,
         &stop = stop,
         &m = m,
         &ret = ret
     ]() {
-        for (int curve_num = 0; curve_num < count; ++curve_num) {
+        for (int curve_num = 0; curve_num < count; ++curve_num)
+        {
             Curve vals = generate_curve(n);
-            std::vector<intxx> lret = factor(n, B, std::move(vals));
+            std::vector<intxx> lret = factor(n, k, std::move(vals));
 
             std::lock_guard<std::mutex> g{m};
             if (stop.load()) {
@@ -334,18 +342,28 @@ std::vector<intxx> factor_ECM_parm(
     };
 
     std::vector<std::thread> threads;
-    for (int q = 0; q < procs; ++q) {
+    for (int q = 0; q < procs; ++q)
+    {
         threads.push_back(std::thread(task));
     }
-    for (int q = 0; q < procs; ++q) {
+    for (int q = 0; q < procs; ++q)
+    {
         threads[q].join();
     }
-    if (!ret.empty()) {
-        return ret;
+    if (ret.empty())
+    {
+        error_code = FactorEcmError::no_found;
     }
-
-    error_code = FactorEcmError::no_found;
-    return {};
+    if (verbose)
+    {
+        std::cout << "Found {";
+        for (const auto& it : ret)
+        {
+            std::cout << it << " ";
+        }
+        std::cout << "}" << std::endl;
+    }
+    return ret;
 }
 
 std::vector<intxx> factor_ECM_mt(
@@ -358,7 +376,8 @@ std::vector<intxx> factor_ECM_mt(
     constexpr int attempts = 14;
     constexpr int32 B = 2000;
     constexpr int32 C = 10;
-    for (int q = 0; q < attempts; ++q) {
+    for (int q = 0; q < attempts; ++q)
+    {
         std::vector<intxx> ret = factor_ECM_parm(
             n,
             B << q,
@@ -368,7 +387,8 @@ std::vector<intxx> factor_ECM_mt(
             false,
             error_code
         );
-        if (!ret.empty()) {
+        if (!ret.empty())
+        {
             return ret;
         }
     }
@@ -383,7 +403,8 @@ std::vector<intxx> factor_ECM(const intxx& n)
     constexpr int32 C = 10;
     constexpr int32 procs = 1;
     std::atomic<bool> stop{false};
-    for (int q = 0; q < attempts; ++q) {
+    for (int q = 0; q < attempts; ++q)
+    {
         std::vector<intxx> ret = factor_ECM_parm(
             n,
             B << q,
@@ -393,7 +414,8 @@ std::vector<intxx> factor_ECM(const intxx& n)
             false,
             error_code
         );
-        if (!ret.empty()) {
+        if (!ret.empty())
+        {
             return ret;
         }
     }
