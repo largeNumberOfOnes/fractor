@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <unordered_map>
+#include <execution>
 #include <iostream>
 #include <utility>
 #include <cassert>
+#include <ranges>
 #include <vector>
 #include <cmath>
 #include <set>
@@ -199,7 +201,7 @@ static std::pair<
 
         for (int32 row = 0; row < m; ++row)
         {
-            if (row != col & A[row][col] == 1)
+            if (row != col && A[row][col] == 1)
             {
                 for (int32 c = 0; c < n; ++c)
                 {
@@ -299,26 +301,56 @@ static std::vector<SmoothNumber> find_smooth_numbers(
     {
         std::cout << "Searching roots..." << std::endl;
     }
-    for (usize q = 0; q < factor_base.size(); ++q)
-    {
-        if (verbose)
+    // for (usize q = 0; q < factor_base.size(); ++q)
+    // {
+    //     if (verbose)
+    //     {
+    //         std::cout << "  " << 100 * q / factor_base.size()
+    //                   << "%" << std::endl;
+    //     }
+    //     int32 p = factor_base[q];
+    //     float64 log_p = std::log(p);
+    //     auto roots = find_Qx_roots(n, sqrt_n, p);
+    //     for (const auto& root : roots)
+    //     {
+    //         intxx start_ = (M + root) % p;
+    //         int32 start = start_.get_si();
+    //         for (int32 q = start; q < 2 * M + 1; q += p)
+    //         {
+    //             sieve_array[q] += log_p;
+    //         }
+    //     }
+    // }
+    auto range = std::views::iota(
+        static_cast<usize>(1),
+        factor_base.size()
+    );
+    std::for_each(
+        std::execution::par,
+        range.begin(),
+        range.end(),
+        [
+            &factor_base = std::as_const(factor_base),
+            &n           = std::as_const(n),
+            &sqrt_n      = std::as_const(sqrt_n),
+            &sieve_array = sieve_array,
+            M            = M
+        ](usize q)
         {
-            std::cout << "  " << 100 * q / factor_base.size()
-                      << "%" << std::endl;
-        }
-        int32 p = factor_base[q];
-        float64 log_p = std::log(p);
-        auto roots = find_Qx_roots(n, sqrt_n, p);
-        for (const auto& root : roots)
-        {
-            intxx start_ = (M + root) % p;
-            int32 start = start_.get_si();
-            for (int32 q = start; q < 2 * M + 1; q += p)
+            int32 p = factor_base[q];
+            float64 log_p = std::log(p);
+            auto roots = find_Qx_roots(n, sqrt_n, p);
+            for (const auto& root : roots)
             {
-                sieve_array[q] += log_p;
+                intxx start_ = (M + root) % p;
+                int32 start = start_.get_si();
+                for (int32 q = start; q < 2 * M + 1; q += p)
+                {
+                    sieve_array[q] += log_p;
+                }
             }
         }
-    }
+    );
 
     float64 threshold = std::log(B) * 1.5;
     std::vector<SmoothNumber> smooth_numbers;
