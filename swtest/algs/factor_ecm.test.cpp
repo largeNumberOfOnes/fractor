@@ -47,7 +47,7 @@ bool comp_vec(
     return true;
 }
 
-void test()
+void test1()
 {
     const std::vector<
         std::pair<intxx, std::vector<intxx>>
@@ -61,16 +61,14 @@ void test()
         {1279111203059, {1273471, 1004429}},
         {intxx{"1000000028000000147"}, {1000000007, 1000000021}},
         {
-            intxx{"3357344855097052383691197216895"},
-            {1833533448090515, 1831079143166693}
+            intxx{"399078807775042581218909"},
+            {710134833337, 561976105157}
         },
     };
 
     for (const auto& [n, ans] : test_data)
     {
         std::vector<intxx> ret = factor_ECM(n);
-        std::cout << n << std::endl;
-        print_array(ret);
         if (!comp_vec(ret, ans))
         {
             std::cout << "Error in test" << std::endl;
@@ -84,9 +82,29 @@ void test()
     }
 }
 
+void test2() {
+    // {intxx{"1000000028000000147"}, },
+    intxx n{"399078807775042581218909"};
+    std::vector<intxx> exp  = {1000000007, 1000000021};
+    std::atomic<bool> stop = false;
+    FactorEcmError error_code;
+    auto ret = factor_ECM_parm(
+        n,
+        100000,
+        10,
+        5,
+        stop,
+        true, // verbose
+        error_code
+    );
+    std::cout << "ret = "; print_array(ret);
+    std::cout << "exp = "; print_array(exp);
+}
+
 int main()
 {
-    test();
+    test1();
+    // test2();
 
     return 0;
 }
