@@ -80,6 +80,11 @@ static std::optional<intxx> mod_inverse(const intxx& a, const intxx& n)
     return mod(old_s, n);
 }
 
+// Returns intxx size in bits
+static usize intxx_size(const intxx& val) {
+    return mpz_sizeinbase(val.get_mpz_t(), 2);
+}
+
 static std::vector<int32> sieve_of_eratosthenes(int32 limit)
 {
     std::vector<bool> is_prime(limit + 1, true);
@@ -272,23 +277,9 @@ std::vector<intxx> factor_ECM_parm(
 {
     error_code = FactorEcmError::success;
 
-    // for (int curve_num = 0; curve_num < C; ++curve_num)
-    // {
-    //     Curve vals = generate_curve(n);
-    //     if (verbose)
-    //     {
-    //         std::cout << "Generate curve: \n"
-    //                   << "  x0: " << vals.x0 << "\n"
-    //                   << "  y0: " << vals.y0 << "\n"
-    //                   << "  a : " << vals.a << "\n"
-    //                   << "  b : " << vals.b << std::endl;
-    //     }
-    if (verbose) {}
-
     std::mutex m{};
     std::vector<intxx> ret;
-
-    int count = C;
+    int32 count = C;
 
     intxx k = 1;
     std::vector<int32> primes = sieve_of_eratosthenes(B);
@@ -305,12 +296,10 @@ std::vector<intxx> factor_ECM_parm(
     {
         std::cout << "Factorization with ECM\n"
                   << "  of n = " << n << " \n"
-                  << "  of size "
-                    << mpz_sizeinbase(n.get_mpz_t(), 2) / 8 << " bytes\n"
+                  << "  of size " << intxx_size(n) / 8 << " bytes\n"
                   << "  B = " << B
                   << "  k = " << k
-                  << "  size of k =  "
-                    << mpz_sizeinbase(k.get_mpz_t(), 2) / 8 << " bytes"
+                  << "  size of k =  " << intxx_size(k) / 8 << " bytes"
                   << "  numbers of procs = " << procs
                   << std::endl;
     }
@@ -322,17 +311,20 @@ std::vector<intxx> factor_ECM_parm(
         &stop = stop,
         &m = m,
         &ret = ret
-    ]() {
+    ]()
+    {
         for (int curve_num = 0; curve_num < count; ++curve_num)
         {
             Curve vals = generate_curve(n);
             std::vector<intxx> lret = factor(n, k, std::move(vals));
 
             std::lock_guard<std::mutex> g{m};
-            if (stop.load()) {
+            if (stop.load())
+            {
                 return;
             }
-            if (!lret.empty()) {
+            if (!lret.empty())
+            {
                 ret = std::move(lret);
                 stop.store(true);
                 return;
