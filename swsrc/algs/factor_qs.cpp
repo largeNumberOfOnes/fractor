@@ -301,28 +301,8 @@ static std::vector<SmoothNumber> find_smooth_numbers(
     {
         std::cout << "Searching roots..." << std::endl;
     }
-    // for (usize q = 0; q < factor_base.size(); ++q)
-    // {
-    //     if (verbose)
-    //     {
-    //         std::cout << "  " << 100 * q / factor_base.size()
-    //                   << "%" << std::endl;
-    //     }
-    //     int32 p = factor_base[q];
-    //     float64 log_p = std::log(p);
-    //     auto roots = find_Qx_roots(n, sqrt_n, p);
-    //     for (const auto& root : roots)
-    //     {
-    //         intxx start_ = (M + root) % p;
-    //         int32 start = start_.get_si();
-    //         for (int32 q = start; q < 2 * M + 1; q += p)
-    //         {
-    //             sieve_array[q] += log_p;
-    //         }
-    //     }
-    // }
     auto range = std::views::iota(
-        static_cast<usize>(1),
+        static_cast<usize>(0),
         factor_base.size()
     );
     std::for_each(
