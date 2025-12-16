@@ -87,16 +87,14 @@ void test2() {
     intxx n{"399078807775042581218909"};
     std::vector<intxx> exp  = {1000000007, 1000000021};
     std::atomic<bool> stop = false;
-    FactorEcmError error_code;
     auto ret = factor_ECM_parm(
         n,
         100000,
         10,
         5,
         stop,
-        true, // verbose
-        error_code
-    );
+        true // verbose
+    ).ret;
     std::cout << "ret = "; print_array(ret);
     std::cout << "exp = "; print_array(exp);
 }

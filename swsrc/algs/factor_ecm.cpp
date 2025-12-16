@@ -1,5 +1,6 @@
 #include "algs/factor_ecm.h"
 
+#include <cmath>
 #include <iostream>
 #include <optional>
 #include <vector>
@@ -265,22 +266,8 @@ static std::vector<intxx> factor(
     return {};
 }
 
-std::vector<intxx> factor_ECM_parm(
-    const intxx& n,
-    int32 B,
-    int32 C,
-    int32 procs,
-    std::atomic<bool>& stop,
-    bool verbose,
-    FactorEcmError& error_code
-)
+static intxx find_k(int32 B)
 {
-    error_code = FactorEcmError::success;
-
-    std::mutex m{};
-    std::vector<intxx> ret;
-    int32 count = C;
-
     intxx k = 1;
     std::vector<int32> primes = sieve_of_eratosthenes(B);
     for (int32 p : primes)
@@ -292,6 +279,50 @@ std::vector<intxx> factor_ECM_parm(
             power *= p;
         }
     }
+    return k;
+}
+
+int32 predict_B(const intxx& n)
+{
+    int32 bits = intxx_size(n);
+    if (bits < 40)
+    {
+        int32 B = 1;
+        for (int q = 0; q < bits / 10; ++q)
+        {
+            B += 10;
+        }
+        return B;
+    }
+    else
+    {
+        double dbits = static_cast<double>(bits) * std::log(2);
+        return std::pow(
+            std::exp(
+                std::sqrt(
+                    std::log(dbits) * std::log(std::log(dbits))
+                )
+            ),
+            0.7
+        );
+    }
+}
+
+FactorECMReturn factor_ECM_parm(
+    const intxx& n,
+    int32 B,
+    int32 C,
+    int32 procs,
+    std::atomic<bool>& stop,
+    bool verbose
+)
+{
+    std::mutex m{};
+    std::vector<intxx> ret;
+    int32 curve_num = -1;
+    int32 count = C;
+
+    intxx k = find_k(B);
     if (verbose)
     {
         std::cout << "Factorization with ECM\n"
@@ -310,10 +341,11 @@ std::vector<intxx> factor_ECM_parm(
         count = count,
         &stop = stop,
         &m = m,
-        &ret = ret
+        &ret = ret,
+        &curve_num = curve_num
     ]()
     {
-        for (int curve_num = 0; curve_num < count; ++curve_num)
+        for (int q = 0; q < count; ++q)
         {
             Curve vals = generate_curve(n);
             std::vector<intxx> lret = factor(n, k, std::move(vals));
@@ -326,6 +358,7 @@ std::vector<intxx> factor_ECM_parm(
             if (!lret.empty())
             {
                 ret = std::move(lret);
+                curve_num = q;
                 stop.store(true);
                 return;
             }
@@ -342,10 +375,7 @@ std::vector<intxx> factor_ECM_parm(
     {
         threads[q].join();
     }
-    if (ret.empty())
-    {
-        error_code = FactorEcmError::no_found;
-    }
+
     if (verbose)
     {
         std::cout << "Found {";
@@ -355,7 +385,43 @@ std::vector<intxx> factor_ECM_parm(
         }
         std::cout << "}" << std::endl;
     }
-    return ret;
+    return {
+        ret,
+        curve_num,
+        B,
+        C,
+        (ret.empty() ? FactorEcmError::no_found : FactorEcmError::success)
+    };
+}
+
+FactorECMReturn factor_ECM_auto(
+    const intxx& n,
+    int32 procs,
+    std::atomic<bool>& stop,
+    bool verbose
+)
+{
+    constexpr int32 B = 2000;
+    constexpr int32 C = 10;
+    constexpr int32 attempts = 14;
+
+    for (int q = 0; q < attempts; ++q)
+    {
+        FactorECMReturn ret = factor_ECM_parm(
+            n,
+            B << q,
+            C << q,
+            procs,
+            stop,
+            verbose
+        );
+        if (!ret.ret.empty())
+        {
+            return ret;
+        }
+    }
+
+    return {{}, 0, 0, 0, FactorEcmError::no_found};
 }
 
 std::vector<intxx> factor_ECM_mt(
@@ -364,52 +430,14 @@ std::vector<intxx> factor_ECM_mt(
     std::atomic<bool>& stop
 )
 {
-    FactorEcmError error_code;
-    constexpr int attempts = 14;
-    constexpr int32 B = 2000;
-    constexpr int32 C = 10;
-    for (int q = 0; q < attempts; ++q)
-    {
-        std::vector<intxx> ret = factor_ECM_parm(
-            n,
-            B << q,
-            C << q,
-            procs,
-            stop,
-            false,
-            error_code
-        );
-        if (!ret.empty())
-        {
-            return ret;
-        }
-    }
-    return {};
+    constexpr bool verbose = false;
+    FactorECMReturn ret = factor_ECM_auto(n, procs, stop, verbose);
+    return ret.ret;
 }
 
 std::vector<intxx> factor_ECM(const intxx& n)
 {
-    FactorEcmError error_code;
-    constexpr int attempts = 14;
-    constexpr int32 B = 2000;
-    constexpr int32 C = 10;
     constexpr int32 procs = 1;
     std::atomic<bool> stop{false};
-    for (int q = 0; q < attempts; ++q)
-    {
-        std::vector<intxx> ret = factor_ECM_parm(
-            n,
-            B << q,
-            C << q,
-            procs,
-            stop,
-            false,
-            error_code
-        );
-        if (!ret.empty())
-        {
-            return ret;
-        }
-    }
-    return {};
+    return factor_ECM_mt(n, procs, stop);
 }

@@ -6,13 +6,14 @@
 
 #include "share/types.h"
 
-enum class FactorEcmError {
+enum class FactorEcmError
+{
     success, // Success
     no_found, // Too small B and С
-    special_case, // Unrecognized error
 };
 
-struct Curve {
+struct Curve
+{
     intxx x0;
     intxx y0;
     intxx a;
@@ -22,6 +23,15 @@ struct Curve {
 // Return random curve coefficients
 Curve generate_curve(const intxx& n);
 
+struct FactorECMReturn
+{
+    std::vector<intxx> ret;
+    int32 curve_num;
+    int32 B;
+    int32 C;
+    FactorEcmError error;
+};
+
 // Factorize a number using the elliptic curve factorization method
 // B -- Upper limit
 // C -- Curves count
@@ -30,14 +40,20 @@ Curve generate_curve(const intxx& n);
 //     the loop is terminated. After the algorithm is completed, the
 //     variable will be true
 // May returns empty list if no factors found
-std::vector<intxx> factor_ECM_parm(
+FactorECMReturn factor_ECM_parm(
     const intxx& n,
     int32 B,
     int32 C,
     int32 procs,
     std::atomic<bool>& stop,
-    bool verbose,
-    FactorEcmError& error_code
+    bool verbose
+);
+
+FactorECMReturn factor_ECM_auto(
+    const intxx& n,
+    int32 procs,
+    std::atomic<bool>& stop,
+    bool verbose
 );
 
 // Factorize a number using the elliptic curve factorization method
