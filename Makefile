@@ -1,5 +1,8 @@
-build_gen:
+gen:
 	make -C swsrc/gen/
+
+fr:
+	make -C swsrc/fr/
 
 test_factor_qs:
 	make -C swtest/algs test_factor_qs
