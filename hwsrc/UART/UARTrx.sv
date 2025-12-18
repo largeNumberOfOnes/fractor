@@ -6,8 +6,9 @@ module UARTrx_sync
     input   wire                    clock,
     input   wire                    reset,
     input   wire                    rx,
+
     output  reg     [`WIDTH-1:0]    data,
-    output  reg                     data_valid
+    output  reg                     data_valid // 1 tick after receiving
 );
 
 localparam CLOCKS_PER_BIT   = `CLK_FREQ / `BAUD_RATE;

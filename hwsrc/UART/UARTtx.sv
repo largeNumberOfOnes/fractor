@@ -6,7 +6,8 @@ module UARTtx_sync
     input   wire                    clock,
     input   wire                    reset,
     input   wire    [`WIDTH-1:0]    data,
-    input   wire                    send,
+    input   wire                    send, // ignore if not idle
+
     output  reg                     tx,
     output  reg                     idle
 );
