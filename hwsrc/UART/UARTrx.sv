@@ -1,7 +1,7 @@
 `include "UART_config.sv"
 
 // 8N1(10 bits per byte) UART receiver
-module UARTrx_sync
+module UARTrx
 (
     input   wire                    clock,
     input   wire                    reset,
@@ -25,7 +25,7 @@ wire                        start;
 reg                         rx_half_sync;
 reg                         rx_sync;
 
-assign read_enable  = (baud_counter == 0);
+assign read_enable  = (baud_counter == 0) & {~idle};
 assign stop_bit     = read_enable & bit_counter[3] & rx_sync;
 assign start        = idle & {~rx_sync};
 
@@ -61,10 +61,15 @@ generate
 endgenerate
 
 always @(posedge clock)
-    data_valid <= read_enable & (bit_counter == 4'{`WIDTH - 1});
+begin
+    if(reset)
+        data_valid <= 1'b0;
+    else
+        data_valid <= read_enable & (bit_counter == {`WIDTH - 1});
+end
 
 always @(posedge clock)
-    baud_counter <= start ? HALF_DELAY :
+    baud_counter <= start ? 3*HALF_DELAY : // skip start-bit and go to middle
                     (baud_counter == 0) ? (CLOCKS_PER_BIT - 1) : (baud_counter - 1);
 
 always @(posedge clock)

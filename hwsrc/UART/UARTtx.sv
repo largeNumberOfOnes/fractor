@@ -1,7 +1,7 @@
 `include "UART_config.sv"
 
 // 8N1(10 bits per byte) UART transmitter
-module UARTtx_sync
+module UARTtx
 (
     input   wire                    clock,
     input   wire                    reset,
@@ -22,7 +22,7 @@ reg     [`WIDTH-1:0]        buffer;
 wire                        write_enable;
 wire                        start;
 
-assign write_enable = (baud_counter == 0);
+assign write_enable = (baud_counter == 0) & {~idle};
 assign start        = send & idle;
 
 always @(posedge clock)
@@ -52,6 +52,6 @@ always @(posedge clock)
     baud_counter <= (start | (baud_counter == 0)) ? (CLOCKS_PER_BIT - 1) : (baud_counter - 1);
 
 always @(posedge clock)
-    idle <= write_enable & bit_counter[3];
+    idle <= reset | (start ? 1'b0 : idle | (write_enable & bit_counter[3]));
 
 endmodule
