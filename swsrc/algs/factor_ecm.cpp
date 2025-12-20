@@ -292,12 +292,12 @@ int32 predict_B(const intxx& n)
         {
             B += 10;
         }
-        return B;
+        return 100 * B;
     }
     else
     {
         double dbits = static_cast<double>(bits) * std::log(2);
-        return std::pow(
+        return 10000 * std::pow(
             std::exp(
                 std::sqrt(
                     std::log(dbits) * std::log(std::log(dbits))
@@ -329,7 +329,7 @@ FactorECMReturn factor_ECM_parm(
                   << "  of n = " << n << " \n"
                   << "  of size " << intxx_size(n) / 8 << " bytes\n"
                   << "  B = " << B
-                  << "  k = " << k
+                //   << "  k = " << k // DEV [it is better to ommit]
                   << "  size of k =  " << intxx_size(k) / 8 << " bytes"
                   << "  numbers of procs = " << procs
                   << std::endl;
@@ -387,9 +387,9 @@ FactorECMReturn factor_ECM_parm(
     }
     return {
         ret,
-        curve_num,
         B,
         C,
+        0, // attempts
         (ret.empty() ? FactorEcmError::no_found : FactorEcmError::success)
     };
 }
@@ -401,22 +401,38 @@ FactorECMReturn factor_ECM_auto(
     bool verbose
 )
 {
-    constexpr int32 B = 2000;
+    procs = 6;
+    // const int32 B = predict_B(n);
+    const int32 B = 1000000;
     constexpr int32 C = 10;
     constexpr int32 attempts = 14;
-
+    if (verbose)
+    {
+        std::cout << "Start auto factor with ECM" << "\n"
+                  << "procs = " << procs
+                  << std::endl;
+    }
     for (int q = 0; q < attempts; ++q)
     {
+        int32 cur_B = B << q;
+        int32 cur_C = C << q;
+        if (verbose)
+        {
+            std::cout << "attempt " << q + 1 << std::endl;
+            std::cout << "B = " << cur_B << std::endl;
+            std::cout << "C = " << cur_C << std::endl;
+        }
         FactorECMReturn ret = factor_ECM_parm(
             n,
-            B << q,
-            C << q,
+            cur_B,
+            cur_C,
             procs,
             stop,
             verbose
         );
         if (!ret.ret.empty())
         {
+            ret.attempts = q;
             return ret;
         }
     }
@@ -430,14 +446,14 @@ std::vector<intxx> factor_ECM_mt(
     std::atomic<bool>& stop
 )
 {
-    constexpr bool verbose = false;
+    constexpr bool verbose = true;
     FactorECMReturn ret = factor_ECM_auto(n, procs, stop, verbose);
     return ret.ret;
 }
 
 std::vector<intxx> factor_ECM(const intxx& n)
 {
-    constexpr int32 procs = 1;
+    constexpr int32 procs = 6;
     std::atomic<bool> stop{false};
     return factor_ECM_mt(n, procs, stop);
 }
