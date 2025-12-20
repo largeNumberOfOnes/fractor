@@ -573,15 +573,25 @@ std::vector<intxx> factor_QS_mt(const intxx &n, int32 procs)
     int32 M = 5000;
     bool verbose = false;
     FactorQsError error_code;
-    return factor_QS_parm(n, B, M, procs, verbose, error_code);
+    for (int q = 0; q < 6; ++q) {
+        auto ret = factor_QS_parm(
+            n,
+            B << q,
+            M << q,
+            procs,
+            verbose,
+            error_code
+        );
+        if (!ret.empty()) {
+            return ret;
+        }
+    }
+
+    return {};
 }
 
 std::vector<intxx> factor_QS(const intxx &n)
 {
-    int32 B = 1000;
-    int32 M = 5000;
-    int32 procs = 10;
-    bool verbose = false;
-    FactorQsError error_code;
-    return factor_QS_parm(n, B, M, procs, verbose, error_code);
+    int32 procs = 1;
+    return factor_QS_mt(n, procs);
 }
